@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CubePart: An Open-Vocabulary Part-Controllable 3D Generator</title>
+<meta name="description" content="CubePart is a generative framework for open-vocabulary, part-controllable 3D mesh generation. Given a text prompt and a part schema, CubePart synthesizes multi-part 3D objects ready for animation, physics, and scripted behaviors." />
+<meta property="og:title" content="CubePart: An Open-Vocabulary Part-Controllable 3D Generator" />
+<meta property="og:description" content="SIGGRAPH 2026 — A text-driven, schema-controlled 3D generator that produces game-ready multi-part assets." />
+<meta property="og:image" content="static/images/teaser.jpg" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="static/css/style.css" />
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="#top" class="brand">
+      <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <g transform="rotate(11 16 16)">
+          <rect x="2.5" y="2.5" width="27" height="27" rx="2" fill="currentColor"/>
+          <rect x="12" y="12" width="8" height="8" fill="#fbfaf7"/>
+        </g>
+      </svg>
+      <span class="brand-text">CubePart</span>
+    </a>
+    <nav class="site-nav">
+      <a href="#gallery">Gallery</a>
+      <a href="#abstract">Abstract</a>
+      <a href="#method">Method</a>
+      <a href="#dataset">Dataset</a>
+      <a href="#results">Results</a>
+      <a href="#bibtex">BibTeX</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ============== HERO ============== -->
+<section class="hero">
+  <div class="container">
+    <div class="venue-badge">
+      <span class="venue-dot"></span>
+      SIGGRAPH&nbsp;’2026 &middot; Los&nbsp;Angeles
+    </div>
+    <h1 class="title">
+      <span class="title-mark">CubePart</span><span class="title-sep">:</span>
+      <span class="subtitle">An&nbsp;Open-Vocabulary Part-Controllable 3D&nbsp;Generator</span>
+    </h1>
+
+    <ul class="authors">
+      <li><a href="#" target="_blank" rel="noopener">Yiheng Zhu</a><sup>1*</sup></li>
+      <li><a href="https://dunbar12138.github.io/" target="_blank" rel="noopener">Kangle Deng</a><sup>1*</sup></li>
+      <li><a href="https://fauconnier.github.io/" target="_blank" rel="noopener">Jean-Philippe Fauconnier</a><sup>1*</sup></li>
+      <li><a href="https://www.linkedin.com/in/inavarro/" target="_blank" rel="noopener">Inaki Navarro</a><sup>1*</sup></li>
+      <li><a href="https://lidaiqing.github.io/" target="_blank" rel="noopener">Daiqing Li</a><sup>1</sup></li>
+      <li><a href="https://avapun.com/" target="_blank" rel="noopener">Ava Pun</a><sup>1,2</sup></li>
+      <li><a href="#" target="_blank" rel="noopener">Yinan Zhang</a><sup>1</sup></li>
+      <li><a href="https://payeah.net/" target="_blank" rel="noopener">Peiye Zhuang</a><sup>1</sup></li>
+      <li><a href="#" target="_blank" rel="noopener">Xiaoxia Sun</a><sup>1</sup></li>
+      <li><a href="https://graphics.stanford.edu/~maneesh/" target="_blank" rel="noopener">Maneesh Agrawala</a><sup>1,3</sup></li>
+      <li><a href="#" target="_blank" rel="noopener">Kiran Bhat</a><sup>1</sup></li>
+      <li><a href="#" target="_blank" rel="noopener">Tinghui Zhou</a><sup>1</sup></li>
+    </ul>
+
+    <ul class="affiliations">
+      <li><sup>1</sup>Roblox</li>
+      <li><sup>2</sup>Carnegie Mellon University</li>
+      <li><sup>3</sup>Stanford University</li>
+    </ul>
+    <p class="contrib-note"><sup>*</sup>The first four authors contributed equally to this research.</p>
+
+    <div class="action-row">
+      <a class="action-btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        arXiv
+      </a>
+      <a class="action-btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.3-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.7 4.7 0 0 0-1.3-3.2 4.4 4.4 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.4 4.4 0 0 0-.1 3.2A4.7 4.7 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Code
+      </a>
+      <a class="action-btn" href="#video">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9.5v5l4-2.5z" fill="currentColor"/></svg>
+        Video
+      </a>
+      <a class="action-btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        Demo
+      </a>
+      <a class="action-btn" href="#bibtex">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        BibTeX
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============== VIDEO ============== -->
+<section id="video" class="section section-tinted">
+  <div class="container narrow">
+    <!-- <h2 class="section-title">Video</h2> -->
+    <div class="video-card">
+      <video
+        class="video-player"
+        src="static/videos/summary.mp4"
+        controls
+        muted
+        playsinline
+        preload="metadata"
+        aria-label="CubePart summary video"
+      ></video>
+    </div>
+  </div>
+</section>
+
+<!-- ============== TEASER ============== -->
+<section class="teaser-wrap">
+  <div class="container">
+    <figure class="figure">
+      <img src="static/images/teaser.jpg" alt="CubePart teaser: given a text prompt and a parts schema, CubePart generates structurally complete multi-part 3D meshes that can be animated and driven by behavior scripts." />
+      <figcaption>
+        <strong>We propose CubePart, an open-vocabulary part-controllable 3D generator.</strong>
+        (a) Given a text prompt and a schema defining part decomposition, CubePart synthesizes a multi-part 3D object where each component is a distinct, structurally complete mesh.
+        (b) The controllable part-based framework directly facilitates scripted or physically simulated behaviors (bottom row). CubePart can also accept an existing mesh as input, decomposing it into semantic multi-part meshes according to the input part schema (last column).
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============== INTERACTIVE GALLERY ============== -->
+<section id="gallery" class="section">
+  <div class="container">
+    <h2 class="section-title">Gallery</h2>
+    <p class="section-intro">
+      Each example below pairs a live 3D viewer with the resulting in-engine behavior video.
+      <strong>Drag</strong> to rotate, <strong>scroll</strong> to zoom, slide
+      the explode control to separate parts, and <strong>hover</strong> any part to see its label.
+    </p>
+
+    <div class="pv-carousel">
+      <button type="button" class="pv-nav pv-prev" aria-label="Previous example">&lsaquo;</button>
+      <button type="button" class="pv-nav pv-next" aria-label="Next example">&rsaquo;</button>
+
+      <div class="pv-track">
+
+        <!-- Card template (the loop below is intentionally identical so swap a card
+             without thinking about layout — only the <header>, data-glb, and
+             <video>/placeholder vary). -->
+
+        <!-- 1. Jellyfish race car -->
+        <article class="pv-card" data-pv data-glb="static/meshes/jelly_fish_10.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Jellyfish race car</h3>
+            <p class="pv-prompt"><em>&ldquo;A jellyfish-themed race car.&rdquo;</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/jellyfinal.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. Drone -->
+        <article class="pv-card" data-pv data-glb="static/meshes/drone2.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Drone</h3>
+            <p class="pv-prompt"><em>Quadrotor with articulated blades, landing legs and lights.</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/drone_v3.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3. Humanoid robot -->
+        <article class="pv-card" data-pv data-glb="static/meshes/robot.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Humanoid robot</h3>
+            <p class="pv-prompt"><em>Robotic humanoid with independent head, torso, arms and legs.</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/robot_v3.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4. Helicopter -->
+        <article class="pv-card" data-pv data-glb="static/meshes/heli1.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Helicopter</h3>
+            <p class="pv-prompt"><em>Body and rotor blades as independent parts for spin animation.</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/heli_v1.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5. Wizard with magic staff -->
+        <article class="pv-card" data-pv data-glb="static/meshes/human2_v2.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Wizard with magic staff</h3>
+            <p class="pv-prompt"><em>Character with separable props (staff, orb, hat) for coordinated motion.</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/human_v2.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+        <!-- 7. Pirate chest -->
+        <article class="pv-card" data-pv data-glb="static/meshes/pirate_chest_2.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Pirate chest</h3>
+            <p class="pv-prompt"><em>Lid and base as independent parts to drive an opening animation.</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/pirate_chest_no_light.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+        <!-- 8. Potted flower -->
+        <article class="pv-card" data-pv data-glb="static/meshes/flower1.glb">
+          <header class="pv-head">
+            <h3 class="pv-title">Potted flower</h3>
+            <p class="pv-prompt"><em>Stem, petals and leaves as independent parts for swaying motion.</em></p>
+          </header>
+          <div class="pv-legend" aria-label="Part legend"></div>
+          <div class="pv-stage">
+            <div class="pv-viewer">
+              <div class="pv-canvas"></div>
+              <div class="pv-tooltip" aria-hidden="true"></div>
+              <div class="pv-loading">Loading model&hellip;</div>
+              <div class="pv-overlay">
+                <label class="pv-control">
+                  <span class="pv-label">Explode</span>
+                  <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+                </label>
+                <button type="button" class="pv-reset" title="Reset view">Reset</button>
+              </div>
+            </div>
+            <div class="pv-video">
+              <video src="static/videos/flower_v1.mp4" muted loop playsinline autoplay preload="metadata" aria-label="Behavior video"></video>
+            </div>
+          </div>
+        </article>
+
+      </div><!-- /.pv-track -->
+
+      <div class="pv-dots" aria-label="Carousel pagination"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== TL;DR ============== -->
+<section id="abstract" class="section">
+  <div class="container narrow">
+    <h2 class="section-title">Abstract</h2>
+    <p class="lead">
+      Interactive 3D assets used in games and simulation are typically decomposed into specific semantic parts to support
+      animation, physics, and scripted behaviors, yet most generative 3D models produce either monolithic meshes or
+      arbitrary part decompositions that cannot be aligned with application-specific requirements.
+    </p>
+    <p>
+      We present <b>CubePart</b>, a generative framework for <em>open-vocabulary, part-controllable</em> 3D mesh generation that
+      exposes part structure as an explicit inference-time control signal. Given a global text prompt and a user-defined
+      parts schema expressed as an open-ended list of part names, our method generates a set of meshes—one per schema
+      element—that assemble into a coherent object while respecting the specified semantic structure.
+    </p>
+    <p>
+      To enable this capability, we introduce a scalable data pipeline to construct a large open-vocabulary, part-labeled 3D
+      dataset, along with a two-stage generative architecture that separates global shape synthesis from part-level decoding.
+      We demonstrate that the resulting assets can be directly integrated into game engines and driven by animation and
+      behavior scripts without manual post-processing.
+    </p>
+
+    <div class="tldr-grid">
+      <div class="tldr-card">
+        <div class="tldr-num">462K</div>
+        <div class="tldr-label">assets in our open-vocabulary part-labeled dataset</div>
+      </div>
+      <div class="tldr-card">
+        <div class="tldr-num">2.02M</div>
+        <div class="tldr-label">parts, more than 11&times; larger than PartVerse-XL</div>
+      </div>
+      <div class="tldr-card">
+        <div class="tldr-num">Open-Voc.</div>
+        <div class="tldr-label">user-defined part schemas at inference time</div>
+      </div>
+      <div class="tldr-card">
+        <div class="tldr-num">Game-Ready</div>
+        <div class="tldr-label">can be integrated into game engines and driven by behavior scripts</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== METHOD ============== -->
+<section id="method" class="section">
+  <div class="container">
+    <h2 class="section-title">Method</h2>
+    <p class="section-intro">
+      CubePart is a two-stage framework that takes a global text prompt and an
+      open-ended <em>parts schema</em> (a list of free-form part names), and produces a set of meshes—one per schema element—
+      that jointly assemble into a coherent object.
+    </p>
+
+    <figure class="figure">
+      <img src="static/images/method_pipeline.jpg" alt="CubePart pipeline. Stage 1 generates a single full-shape latent from the text prompt and schema. Stage 2 decomposes it into a set of part latents using a multi-mesh DiT with cross-part attention residual blocks." />
+      <figcaption>
+        <strong>Overview.</strong> (a) <em>Stage 1 — Single-Part Mesh Generation</em> synthesizes a holistic shape latent
+        with a Multi-Modal DiT (MM-DiT) conditioned on the prompt and schema encoded by Qwen-VL.
+        (b) <em>Stage 2 — Multi-Part Mesh Generation</em> takes the Stage&nbsp;1 latent and decomposes it into distinct part latents.
+        We initialize Stage 2 with the MM-DiT weights from Stage 1 and inject Cross-Part Attention Residual Blocks
+        to enable structural interaction across parts.
+      </figcaption>
+    </figure>
+
+    <div class="two-col">
+      <div class="two-col-text">
+        <h3>Stage 1 &mdash; Schema-aware single-mesh generation</h3>
+        <p>
+          We adapt a vecset-based diffusion transformer for text-to-3D generation. The pretrained model is fine-tuned on
+          schema-augmented prompts of the form
+          <code>"&lt;global caption&gt;. This object contains the following parts: &lt;list of part labels&gt;."</code>
+          so that all requested parts appear in the generated shape.
+        </p>
+        <h3>Stage 2 &mdash; Multi-part decoding</h3>
+        <p>
+          Stage 2 reuses Stage&nbsp;1 weights and adds zero-initialized
+          <em>Cross-Part Attention Residual Blocks</em> at four layers. This preserves the strong single-mesh prior while letting
+          parts exchange global structural context. Each part is conditioned on a part-aware prompt indicating
+          the target name and the full schema.
+        </p>
+      </div>
+      <figure class="figure inline-figure">
+        <img src="static/images/cross_part_attention.jpg" alt="Cross-part attention residual block — zero-initialized transformer block that operates across the latents of all parts and the full shape latent." />
+        <figcaption>
+          A dedicated <strong>zero-initialized</strong> transformer block performs cross-part global attention, leaving the
+          single-mesh priors intact while enabling efficient inter-part communication.
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============== DATASET ============== -->
+<section id="dataset" class="section section-tinted">
+  <div class="container">
+    <h2 class="section-title">Dataset &amp; Data Engine</h2>
+    <p class="section-intro">
+      Training open-vocabulary part-controllable 3D generators requires datasets that are <em>both large and
+      richly part-labeled</em>. We built a scalable data engine that combines artist-provided segmentations with
+      Vision-Language Models (VLMs) and a 3D-aware <em>Set-of-Mark</em> prompting strategy to produce concise,
+      semantically meaningful part names at scale.
+    </p>
+
+    <figure class="figure figure-narrow">
+      <img src="static/images/data_comparison.jpg" alt="The same Objaverse tank asset, compared across three pipelines. Top-left: original artist decomposition with 7 parts. Middle: PartVerse produces 17 over-segmented parts with VLM caption artifacts. Right: Ours produces 4 concise, meaningful clusters (hull, turret and cannon, side arms, tracks)." />
+      <figcaption>
+        <strong>Part segmentation and naming comparison.</strong>
+        Our automatic pipeline produces concise, meaningful names (e.g. <em>hull</em>, <em>tracks</em>) whereas captions
+        from prior work suffer from VLM artifacts and lack spatial specificity.
+      </figcaption>
+    </figure>
+
+    <div class="table-wrap table-narrow">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="left">Dataset</th>
+            <th>Assets</th>
+            <th>Parts</th>
+            <th>Open-Vocab.</th>
+            <th>Part Text</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="left">ShapeNetPart</td><td>16K</td><td>93K</td><td>&times;</td><td>Taxonomy</td></tr>
+          <tr><td class="left">PartNet</td><td>26K</td><td>573K</td><td>&times;</td><td>Taxonomy</td></tr>
+          <tr><td class="left">PartVerse</td><td>12K</td><td>91K</td><td>&check;</td><td>Captions</td></tr>
+          <tr><td class="left">PartVerse-XL</td><td>40K</td><td>320K</td><td>&check;</td><td>Captions</td></tr>
+          <tr class="best">
+            <td class="left"><b>Ours</b></td>
+            <td><b>462K</b></td>
+            <td><b>2.02M</b></td>
+            <td>&check;</td>
+            <td><b>Names</b></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="caption-only">
+        <strong>Dataset comparison.</strong> Our dataset is more than 11&times; larger than PartVerse-XL while using
+        concise, schema-friendly part <em>names</em> rather than long descriptive captions.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== RESULTS ============== -->
+<section id="results" class="section">
+  <div class="container">
+    <h2 class="section-title">Results</h2>
+
+    <h3 class="subsection-title">Two-Stage Generation Gallery</h3>
+    <p class="section-intro">
+      Conditioned on a text prompt and a parts schema, CubePart synthesizes detailed global shapes and decomposes them
+      into independent, structurally complete part meshes that adhere to the defined schema. <strong>Drag</strong> to
+      rotate, <strong>scroll</strong> to zoom, slide the explode control to separate parts, and <strong>hover</strong>
+      any part &mdash; either in the viewer or its colored chip &mdash; to see its label.
+    </p>
+
+    <div class="pv-results-grid">
+
+      <!-- Dwarven driller -->
+      <article class="pv-card pv-card-solo" data-pv data-glb="static/meshes/full/dwarven_driller_1.glb">
+        <header class="pv-head">
+          <h3 class="pv-title">Dwarven steam driller</h3>
+          <p class="pv-prompt"><em>&ldquo;A dwarven steam-powered drilling machine with a massive rotating drill bit at the front.&rdquo;</em></p>
+        </header>
+        <div class="pv-legend" aria-label="Part legend"></div>
+        <div class="pv-stage">
+          <div class="pv-viewer">
+            <div class="pv-canvas"></div>
+            <div class="pv-tooltip" aria-hidden="true"></div>
+            <div class="pv-loading">Loading model&hellip;</div>
+            <div class="pv-overlay">
+              <label class="pv-control">
+                <span class="pv-label">Explode</span>
+                <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <button type="button" class="pv-reset" title="Reset view">Reset</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Rhino tank -->
+      <article class="pv-card pv-card-solo" data-pv data-glb="static/meshes/full/rhino_tank_2.glb">
+        <header class="pv-head">
+          <h3 class="pv-title">Rhino tank</h3>
+          <p class="pv-prompt"><em>&ldquo;A heavily armored futuristic tank designed to resemble a charging rhinoceros.&rdquo;</em></p>
+        </header>
+        <div class="pv-legend" aria-label="Part legend"></div>
+        <div class="pv-stage">
+          <div class="pv-viewer">
+            <div class="pv-canvas"></div>
+            <div class="pv-tooltip" aria-hidden="true"></div>
+            <div class="pv-loading">Loading model&hellip;</div>
+            <div class="pv-overlay">
+              <label class="pv-control">
+                <span class="pv-label">Explode</span>
+                <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <button type="button" class="pv-reset" title="Reset view">Reset</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Walking hut -->
+      <article class="pv-card pv-card-solo" data-pv data-glb="static/meshes/full/walking_hut_1.glb">
+        <header class="pv-head">
+          <h3 class="pv-title">Walking fantasy hut</h3>
+          <p class="pv-prompt"><em>&ldquo;A fantasy cottage hut perched on giant mechanical chicken legs.&rdquo;</em></p>
+        </header>
+        <div class="pv-legend" aria-label="Part legend"></div>
+        <div class="pv-stage">
+          <div class="pv-viewer">
+            <div class="pv-canvas"></div>
+            <div class="pv-tooltip" aria-hidden="true"></div>
+            <div class="pv-loading">Loading model&hellip;</div>
+            <div class="pv-overlay">
+              <label class="pv-control">
+                <span class="pv-label">Explode</span>
+                <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <button type="button" class="pv-reset" title="Reset view">Reset</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Wild-west laser pistol -->
+      <article class="pv-card pv-card-solo" data-pv data-glb="static/meshes/supp/wild_west_laser_pistol_4.glb">
+        <header class="pv-head">
+          <h3 class="pv-title">Wild-west laser pistol</h3>
+          <p class="pv-prompt"><em>&ldquo;A futuristic energy weapon with an old western revolver aesthetic.&rdquo;</em></p>
+        </header>
+        <div class="pv-legend" aria-label="Part legend"></div>
+        <div class="pv-stage">
+          <div class="pv-viewer">
+            <div class="pv-canvas"></div>
+            <div class="pv-tooltip" aria-hidden="true"></div>
+            <div class="pv-loading">Loading model&hellip;</div>
+            <div class="pv-overlay">
+              <label class="pv-control">
+                <span class="pv-label">Explode</span>
+                <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <button type="button" class="pv-reset" title="Reset view">Reset</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Clockwork horse -->
+      <article class="pv-card pv-card-solo" data-pv data-glb="static/meshes/supp/clockwork_horse_1.glb">
+        <header class="pv-head">
+          <h3 class="pv-title">Clockwork horse</h3>
+          <p class="pv-prompt"><em>&ldquo;A mechanical horse construct made of brass gears, copper plating, and exposed clockwork mechanisms.&rdquo;</em></p>
+        </header>
+        <div class="pv-legend" aria-label="Part legend"></div>
+        <div class="pv-stage">
+          <div class="pv-viewer">
+            <div class="pv-canvas"></div>
+            <div class="pv-tooltip" aria-hidden="true"></div>
+            <div class="pv-loading">Loading model&hellip;</div>
+            <div class="pv-overlay">
+              <label class="pv-control">
+                <span class="pv-label">Explode</span>
+                <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <button type="button" class="pv-reset" title="Reset view">Reset</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Deep-sea research submersible -->
+      <article class="pv-card pv-card-solo" data-pv data-glb="static/meshes/supp/deep_sea_sub_1.glb">
+        <header class="pv-head">
+          <h3 class="pv-title">Deep-sea submersible</h3>
+          <p class="pv-prompt"><em>&ldquo;A yellow deep-sea research submersible.&rdquo;</em></p>
+        </header>
+        <div class="pv-legend" aria-label="Part legend"></div>
+        <div class="pv-stage">
+          <div class="pv-viewer">
+            <div class="pv-canvas"></div>
+            <div class="pv-tooltip" aria-hidden="true"></div>
+            <div class="pv-loading">Loading model&hellip;</div>
+            <div class="pv-overlay">
+              <label class="pv-control">
+                <span class="pv-label">Explode</span>
+                <input type="range" class="pv-explode" min="0" max="1" step="0.01" value="0" />
+              </label>
+              <button type="button" class="pv-reset" title="Reset view">Reset</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <div class="browse-cta">
+      <a href="browse.html">
+        Browse the full gallery (20 more)
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+
+    <h3 class="subsection-title">Varying the Part Schema</h3>
+    <p class="section-intro">
+      The same object can be decomposed at different granularities just by changing the schema — from 2 parts up to 8
+      parts. CubePart resolves ambiguous boundaries (e.g. between fenders and wheels) by introducing the relevant
+      part names in the schema.
+    </p>
+    <figure class="figure figure-xnarrow">
+      <img src="static/images/varying_parts.jpg" alt="Two input meshes (motorcycle and dune buggy) each decomposed by CubePart into 2, 4, and 8 parts. With 2 parts the model merges fenders into wheels; with 4 and 8 parts, the explicit part names resolve the ambiguity and produce fine-grained components." />
+      <figcaption>
+        <strong>Qualitative results with varying part schemas.</strong> Our method controls both the semantic identity and granularity of generated parts.
+      </figcaption>
+    </figure>
+
+    <h3 class="subsection-title">Multi-Part Generation: Comparisons</h3>
+    <p class="section-intro">
+      Unlike prior methods that either fix the part vocabulary or infer parts implicitly from 2D segmentation,
+      CubePart guarantees alignment between the generated meshes and a user-defined open-vocabulary schema.
+      Compared to controllable (HoloPart) and non-controllable (OmniPart, PartCrafter, PartPacker) baselines, our
+      method produces cleaner part boundaries and stronger geometric fidelity.
+    </p>
+    <figure class="figure figure-medium">
+      <img src="static/images/result_multimesh.jpg" alt="Qualitative comparison on PartObjaverse-Tiny. Five rows (house, character, horned figure, flowerpot, kettle) compare Ground-Truth, Ours, PatchAlign3D+HoloPart, SAM3+OmniPart, PartCrafter, and PartPacker." />
+      <figcaption>
+        <strong>Qualitative comparison of multi-part mesh generation.</strong>
+        Under the mesh-conditioned setting, CubePart outperforms HoloPart in both schema adherence and geometric fidelity.
+        Image-conditioned baselines (OmniPart, PartCrafter, PartPacker) fail to offer user-defined part control and
+        produce noisier segmentation boundaries.
+      </figcaption>
+    </figure>
+
+    <h3 class="subsection-title">Quantitative Comparison</h3>
+    <div class="table-wrap table-narrow">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="left">Method on PartObjaverse-Tiny</th>
+            <th colspan="2">Part-Level</th>
+            <th colspan="2">Holistic-Level</th>
+          </tr>
+          <tr>
+            <th>CD&nbsp;&darr;</th><th>F-score&nbsp;&uarr;</th>
+            <th>CD&nbsp;&darr;</th><th>F-score&nbsp;&uarr;</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="left">PartCrafter</td><td>0.493</td><td>0.290</td><td>0.272</td><td>0.552</td></tr>
+          <tr><td class="left">PartPacker</td><td>0.374</td><td>0.475</td><td>0.164</td><td>0.792</td></tr>
+          <tr><td class="left">PatchAlign3D + HoloPart</td><td>0.309</td><td>0.549</td><td>0.050</td><td>0.970</td></tr>
+          <tr><td class="left">SAM3 + OmniPart</td><td>0.309</td><td>0.630</td><td>0.053</td><td>0.970</td></tr>
+          <tr class="best">
+            <td class="left"><b>Ours</b></td>
+            <td><b>0.251</b></td><td><b>0.743</b></td>
+            <td><b>0.048</b></td><td><b>0.974</b></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="caption-only">
+        <strong>Evaluation on part-based multi-mesh generation.</strong>
+        Our method demonstrates consistent improvements in structural completeness and part-level accuracy on both
+        holistic and part-level Chamfer Distance and F-score.
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============== BIBTEX ============== -->
+<section id="bibtex" class="section section-tinted">
+  <div class="container narrow">
+    <h2 class="section-title">BibTeX</h2>
+    <div class="bibtex-card">
+      <button class="copy-btn" type="button" data-target="bibtex-pre">Copy</button>
+<pre id="bibtex-pre">@inproceedings{zhu2026cubepart,
+  author = {Zhu, Yiheng and Deng, Kangle and Fauconnier, Jean-Philippe
+            and Navarro, Inaki and Li, Daiqing and Pun, Ava
+            and Zhang, Yinan and Zhuang, Peiye and Sun, Xiaoxia
+            and Agrawala, Maneesh and Bhat, Kiran and Zhou, Tinghui},
+  title = {CubePart: An Open-Vocabulary Part-Controllable 3D Generator},
+  booktitle = {SIGGRAPH},
+  year = {2026},
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============== ACK / FOOTER ============== -->
+<section class="section">
+  <div class="container narrow">
+    <h2 class="section-title">Acknowledgments</h2>
+    <p>
+      We thank the leadership, Nishchaie Khanna, Karun Channa, Anupam Singh, and David Baszucki, for their support and guidance throughout this work.
+      We also thank Michael Palleschi, Maurice Chu, Keenan Crane, and Kayvon Fatahalian for helpful discussions.
+      We are grateful to Zhenyu Zhao, Daniel Chin, Michael Spedden, Alvin Chan, and Saurav Dhakad for setting up the evaluation pipeline as part of the broader project. 
+      Finally, we are thankful to the ML-Platform team, Anying Li, Yiqing Wang, Steve Han, Sourashis Roy, Chengyi Nie, Wei Zeng, Sal Pathare, Mandar Deshpande, and Andy Shen, for their contributions and collaboration that helped make this project possible.
+    </p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>
+      &copy; 2026 The Authors. Licensed under a
+      <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+    </p>
+    <p class="muted-note">
+      Page template inspired by recent academic project pages.
+    </p>
+  </div>
+</footer>
+
+</main>
+
+<script src="static/js/main.js"></script>
+<script type="module" src="static/js/part-viewer.js"></script>
+</body>
+</html>
