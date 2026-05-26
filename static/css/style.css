@@ -543,6 +543,19 @@ img { max-width: 100%; display: block; }
 }
 .pv-prompt em { color: var(--ink-2); }
 
+/* Small, muted attribution line under the prompt — e.g. "Input mesh: ..." */
+.pv-credit {
+  margin: 6px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  letter-spacing: 0.005em;
+}
+.pv-credit svg { width: 12px; height: 12px; flex-shrink: 0; opacity: 0.7; }
+
 .pv-stage {
   display: grid;
   grid-template-columns: 1fr 1fr;
