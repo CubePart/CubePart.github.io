@@ -82,6 +82,17 @@ class PartViewer {
     this.renderer.toneMappingExposure = 1.0;
     this.canvasHolder.appendChild(this.renderer.domElement);
 
+    this._contextLostHandler = (e) => {
+      e.preventDefault();
+      if (this.disposed) return;
+      this._handleContextLost();
+    };
+    this.renderer.domElement.addEventListener(
+      'webglcontextlost',
+      this._contextLostHandler,
+      false,
+    );
+
     // Lighting — soft key/fill/back + ambient
     const hemi = new THREE.HemisphereLight(0xffffff, 0xc8c0a8, 0.55);
     this.scene.add(hemi);
@@ -409,45 +420,113 @@ class PartViewer {
     requestAnimationFrame(() => this._tick());
   }
 
-  dispose() {
+  _handleContextLost() {
+    // Rebuild only if this is still the card's current viewer. This guard is
+    // important because context-loss events may arrive after a replacement
+    // viewer has already been attached to the same card.
+    if (!this.el || this.el._pv !== this) return;
+    if (this.loadingEl) {
+      this.loadingEl.classList.remove('hidden');
+      this.loadingEl.textContent = 'Reloading 3D model\u2026';
+    }
+    const card = this.el;
+    this.dispose(false);
+    card._pv = null;
+    card.dispatchEvent(new Event('pv-reboot'));
+  }
+
+  dispose(forceContextLoss = true) {
+    if (this.disposed) return;
     this.disposed = true;
     this._ro?.disconnect();
+    this._clearHover();
+
+    // Release GPU geometry/material memory before dropping the context.
+    if (this.modelRoot) {
+      this.modelRoot.traverse((o) => {
+        if (o.isMesh) {
+          o.geometry?.dispose?.();
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach((m) => m?.dispose?.());
+        }
+      });
+      this.scene?.remove(this.modelRoot);
+    }
+
+    this.controls?.dispose?.();
+    this.renderer.domElement.removeEventListener(
+      'webglcontextlost',
+      this._contextLostHandler,
+      false,
+    );
     this.renderer.dispose();
+    if (forceContextLoss) this.renderer.forceContextLoss?.();
     if (this.renderer.domElement.parentNode) {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
     }
+    this.partMeta = [];
+    this.parts = [];
   }
 }
 
 // ----- Lazy boot via IntersectionObserver so we only spin up viewers in view -----
+//
+// Every viewer owns a WebGL context. Safari enforces a low per-page context
+// limit, so viewers exist only while their cards are near the viewport. This
+// keeps the live count small on pages containing 20+ cards.
+
 function bootViewers() {
   const cards = document.querySelectorAll('[data-pv]');
   if (cards.length === 0) return;
 
-  // (1) Boot a viewer the first time its card scrolls anywhere near the viewport.
-  const bootIO = new IntersectionObserver((entries) => {
+  function createViewer(card) {
+    if (card._pv) return;
+    const loading = card.querySelector('.pv-loading');
+    if (loading) {
+      loading.textContent = 'Loading model\u2026';
+      loading.classList.remove('hidden');
+    }
+    try {
+      card._pv = new PartViewer(card);
+    } catch (e) {
+      card._pv = null;
+      if (loading) loading.textContent = '3D viewer unavailable.';
+      console.error('viewer init failed', e);
+    }
+  }
+
+  function destroyViewer(card) {
+    if (!card._pv) return;
+    card._pv.dispose();
+    card._pv = null;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
-      if (entry.isIntersecting && !entry.target._pvBooted) {
-        entry.target._pvBooted = true;
-        try {
-          entry.target._pv = new PartViewer(entry.target);
-        } catch (e) {
-          console.error('viewer init failed', e);
-        }
+      const card = entry.target;
+      card._pvInRange = entry.isIntersecting;
+      if (entry.isIntersecting) {
+        createViewer(card);
+      } else {
+        destroyViewer(card);
       }
     });
   }, { rootMargin: '300px 0px' });
 
-  // (2) Once booted, pause render loops when the card is fully off-screen.
-  //     With pages hosting 20+ viewers this is what keeps the GPU idle.
-  const visIO = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      const pv = entry.target._pv;
-      if (pv) pv.visible = entry.isIntersecting;
+  cards.forEach((card) => {
+    card.addEventListener('pv-reboot', () => {
+      if (card._pvInRange && !card._pv) {
+        requestAnimationFrame(() => createViewer(card));
+      }
     });
-  }, { rootMargin: '0px 0px' });
-
-  cards.forEach((c) => { bootIO.observe(c); visIO.observe(c); });
+    observer.observe(card);
+  });
 }
 
-document.addEventListener('DOMContentLoaded', bootViewers);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootViewers, { once: true });
+} else {
+  // A module loaded through the Safari import-map shim can finish after
+  // DOMContentLoaded has already fired.
+  bootViewers();
+}

@@ -562,7 +562,10 @@ img { max-width: 100%; display: block; }
   gap: 16px;
   align-items: stretch;
 }
-.pv-stage > * { min-width: 0; }    /* keep flex/grid children from overflowing */
+.pv-stage > * {
+  min-width: 0;
+  width: 100%; /* Safari needs a definite inline size for aspect-ratio grid items */
+}
 @media (max-width: 880px) {
   .pv-stage { grid-template-columns: 1fr; }
 }
